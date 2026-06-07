@@ -1,0 +1,22 @@
+[package]
+name = "git-foreach"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Run any command across many local git repositories at once, from a mouse-driven TUI"
+repository = "https://github.com/m5d215/git-foreach"
+authors = ["m5d215"]
+readme = "README.md"
+keywords = ["git", "terminal", "tui", "monorepo", "batch"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+anyhow = "1.0.102"
+crossterm = "0.29.0"
+dirs = "6.0.0"
+glob = "0.3.3"
+nix = { version = "0.31.3", features = ["signal", "process"] }
+ratatui = "0.30.1"
+serde = { version = "1.0.228", features = ["derive"] }
+toml = "1.1.2"
+walkdir = "2.5.0"

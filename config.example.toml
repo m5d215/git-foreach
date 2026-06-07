@@ -1,0 +1,35 @@
+# git-foreach config — copy to ~/.config/git-foreach/config.toml
+# All keys are optional.
+
+# Repos checked by default at startup (globs over "fqdn/user/repo").
+default_checked = ["github.com/m5d215/*"]
+
+# "nerd" (default, Nerd Font glyphs) / "ascii" (plain text).
+icons = "nerd"
+
+# key -> Action name. The UI is mouse-first, so default keys are sparse; add freely here.
+# Action names: rescan / cancel / run / quit / cursor_up / cursor_down /
+#   check_all / uncheck_all / clear_focus / scroll_up / scroll_down /
+#   scroll_top / scroll_bottom / input / toggle_check / expand / collapse /
+#   toggle_expand / focus
+[keymap]
+j = "cursor_down"
+k = "cursor_up"
+space = "toggle_check"
+r = "rescan"
+c = "cancel"
+
+# Frequently used commands. Loaded into the input via chips above it (run with Enter).
+# Add `key` to merge into the keymap so a single key can load it.
+[[preset]]
+label = "pull"
+command = "git pull --ff-only"
+key = "p"
+
+[[preset]]
+label = "status"
+command = "git status -s"
+
+[[preset]]
+label = "fetch"
+command = "git fetch --all --prune"
