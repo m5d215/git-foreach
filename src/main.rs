@@ -11,7 +11,10 @@ use std::io::{self, Stdout};
 use std::time::Duration;
 
 use anyhow::Result;
-use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyEventKind};
+use crossterm::event::{
+    self, DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
+    Event, KeyEventKind,
+};
 use crossterm::execute;
 use crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
@@ -26,12 +29,22 @@ type Tui = Terminal<CrosstermBackend<Stdout>>;
 fn setup_terminal() -> Result<Tui> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(
+        stdout,
+        EnterAlternateScreen,
+        EnableMouseCapture,
+        EnableBracketedPaste
+    )?;
     Ok(Terminal::new(CrosstermBackend::new(stdout))?)
 }
 
 fn restore_terminal() -> Result<()> {
-    execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
+    execute!(
+        io::stdout(),
+        LeaveAlternateScreen,
+        DisableMouseCapture,
+        DisableBracketedPaste
+    )?;
     disable_raw_mode()?;
     Ok(())
 }
@@ -98,6 +111,7 @@ fn run(terminal: &mut Tui) -> Result<()> {
                 match event::read()? {
                     Event::Key(key) if key.kind == KeyEventKind::Press => app.on_key(key),
                     Event::Mouse(mouse) => app.on_mouse(mouse),
+                    Event::Paste(data) => app.on_paste(data),
                     Event::Resize(_, _) => {}
                     _ => {}
                 }

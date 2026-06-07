@@ -20,4 +20,5 @@ nix = { version = "0.31.3", features = ["signal", "process"] }
 ratatui = "0.30.1"
 serde = { version = "1.0.228", features = ["derive"] }
 toml = "1.1.2"
+tui-input = "0.15.3"
 walkdir = "2.5.0"
