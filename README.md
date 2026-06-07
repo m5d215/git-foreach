@@ -9,7 +9,7 @@ Status: early development.
 - **Mouse-first TUI** (ratatui) — clickable checkboxes, output focus, scrollbar, and preset chips. Mouse, default keys, and the config keymap all funnel through a single action hub, so they share one code path.
 - **Repository tree** — discovers repos under `~/src` (`{fqdn}/{user}/{repo}`), grouped fqdn → user → repo with tri-state checkboxes for picking targets.
 - **Parallel execution** — runs your command in every checked repo via `$SHELL -c` (cwd = the repo), gated by a concurrency limit. `stdin` is `/dev/null` and pagers / credential prompts are disabled, so nothing hangs without a TTY.
-- **Per-repo output boxes** — each repo's stdout/stderr lands in its own box (stderr colored); focus one repo or scroll the whole stack. Rendering stays O(screen height) even on huge output.
+- **Per-repo output boxes** — each repo's stdout/stderr lands in its own box (stderr colored); focus one repo or scroll the whole stack. Rendering stays O(screen height) even on huge output. A floating button at the pane's top-right copies the visible output to the clipboard.
 - **Live status** — per-repo idle / running / done / exit code / cancelled / skipped, shown by color and glyph.
 - **Cancel that actually stops** — children run in their own process group, so cancel reaches grandchildren. It distinguishes *cancelled* (was running, killed) from *skipped* (never started).
 - **Presets** — frequently used commands appear as chips above the prompt and load into the input on click.

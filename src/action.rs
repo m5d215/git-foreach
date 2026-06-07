@@ -26,6 +26,7 @@ pub enum Action {
     ScrollDown,
     ScrollTop,
     ScrollBottom,
+    CopyOutput,
     // app
     Rescan,
     FocusPane(Pane),

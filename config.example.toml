@@ -10,8 +10,8 @@ icons = "nerd"
 # key -> Action name. The UI is mouse-first, so default keys are sparse; add freely here.
 # Action names: rescan / cancel / run / quit / cursor_up / cursor_down /
 #   check_all / uncheck_all / clear_focus / scroll_up / scroll_down /
-#   scroll_top / scroll_bottom / input / toggle_check / expand / collapse /
-#   toggle_expand / focus
+#   scroll_top / scroll_bottom / copy_output / input / toggle_check /
+#   expand / collapse / toggle_expand / focus
 [keymap]
 j = "cursor_down"
 k = "cursor_up"

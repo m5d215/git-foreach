@@ -27,6 +27,8 @@ pub struct Icons {
     pub box_bar: &'static str,
     /// Cancel button at the right end of the command line.
     pub cancel: &'static str,
+    /// Copy button floating at the top-right of the output pane.
+    pub copy: &'static str,
     // checkbox
     pub check_on: &'static str,
     pub check_off: &'static str,
@@ -57,6 +59,7 @@ const NERD: Icons = Icons {
     focus: "\u{f06e}", // eye
     box_bar: "▌",
     cancel: "\u{f04d}",        // stop
+    copy: "\u{f0c5}",          // copy (two pages)
     check_on: "\u{f046}",      // check-square
     check_off: "\u{f096}",     // square-o
     check_partial: "\u{f147}", // minus-square
@@ -82,6 +85,7 @@ const ASCII: Icons = Icons {
     focus: "*",
     box_bar: "|",
     cancel: "stop",
+    copy: "copy",
     check_on: "[x]",
     check_off: "[ ]",
     check_partial: "[~]",
