@@ -66,9 +66,7 @@ pub fn discover(root: &Path) -> Vec<Repo> {
             }
         }
     }
-    repos.sort_by(|a, b| {
-        (&a.fqdn, &a.user, &a.name).cmp(&(&b.fqdn, &b.user, &b.name))
-    });
+    repos.sort_by(|a, b| (&a.fqdn, &a.user, &a.name).cmp(&(&b.fqdn, &b.user, &b.name)));
     repos
 }
 

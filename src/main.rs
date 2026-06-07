@@ -45,7 +45,28 @@ fn install_panic_hook() {
     }));
 }
 
+const HELP: &str = "git-foreach — run a command across many local git repositories (TUI)
+
+Usage: git-foreach
+
+Scans ~/src and opens an interactive TUI: check repos, type a command, run it
+across all of them. See https://github.com/m5d215/git-foreach";
+
 fn main() -> Result<()> {
+    for arg in std::env::args().skip(1) {
+        match arg.as_str() {
+            "--version" | "-V" => {
+                println!("git-foreach {}", env!("CARGO_PKG_VERSION"));
+                return Ok(());
+            }
+            "--help" | "-h" => {
+                println!("{HELP}");
+                return Ok(());
+            }
+            _ => {}
+        }
+    }
+
     install_panic_hook();
     let mut terminal = setup_terminal()?;
     let result = run(&mut terminal);

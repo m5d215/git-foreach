@@ -150,7 +150,12 @@ impl TreeView {
             NodeRef::Fqdn(i) => self
                 .fqdns
                 .get(i)
-                .map(|f| f.users.iter().flat_map(|u| u.repos.iter().copied()).collect())
+                .map(|f| {
+                    f.users
+                        .iter()
+                        .flat_map(|u| u.repos.iter().copied())
+                        .collect()
+                })
                 .unwrap_or_default(),
         }
     }

@@ -44,28 +44,28 @@ pub struct Icons {
 // Nerd Font glyphs live in the PUA, so they are written as explicit codepoints
 // (\u{...}). All are Font Awesome glyphs bundled in Nerd Fonts; swap by codepoint.
 const NERD: Icons = Icons {
-    expanded: "\u{f078}",    // chevron-down
-    collapsed: "\u{f054}",   // chevron-right
-    fqdn: "\u{f0ac}",        // globe
-    user: "\u{f007}",        // user
-    repo: "\u{f126}",        // code-branch
+    expanded: "\u{f078}",      // chevron-down
+    collapsed: "\u{f054}",     // chevron-right
+    fqdn: "\u{f0ac}",          // globe
+    user: "\u{f007}",          // user
+    repo: "\u{f126}",          // code-branch
     status_done: "\u{f00c}",   // check
     status_fail: "\u{f00d}",   // times
     status_cancel: "\u{f05e}", // ban
     status_skip: "\u{f068}",   // minus
     spinner: &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
-    focus: "\u{f06e}",       // eye
+    focus: "\u{f06e}", // eye
     box_bar: "▌",
-    cancel: "\u{f04d}",      // stop
-    check_on: "\u{f046}",    // check-square
-    check_off: "\u{f096}",   // square-o
+    cancel: "\u{f04d}",        // stop
+    check_on: "\u{f046}",      // check-square
+    check_off: "\u{f096}",     // square-o
     check_partial: "\u{f147}", // minus-square
     sel_bar: "▎",
-    prompt: "\u{f061}",      // arrow-right
+    prompt: "\u{f061}", // arrow-right
     pills: true,
-    pl_left: "\u{e0b6}",     // rounded left
-    pl_sep: "\u{e0b0}",      // triangle right
-    pl_right: "\u{e0b4}",    // rounded right
+    pl_left: "\u{e0b6}",  // rounded left
+    pl_sep: "\u{e0b0}",   // triangle right
+    pl_right: "\u{e0b4}", // rounded right
 };
 
 const ASCII: Icons = Icons {
