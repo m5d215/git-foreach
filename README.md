@@ -58,6 +58,11 @@ The UI is mouse-first; default keys are intentionally sparse and can be extended
 | `q` / `Ctrl-C` | Quit |
 | `Esc` | Leave input / clear focus |
 
+**Editing the command** (while the input is focused): readline-style editing —
+`←`/`→` and `Ctrl-A`/`Ctrl-E` to move, `Ctrl-←`/`Ctrl-→` (or `Alt-B`/`Alt-F`) by
+word, `Ctrl-W` delete word, `Ctrl-U` clear, `Ctrl-K` delete to end. `↑`/`↓` walk
+the command history. Pasting (bracketed paste) inserts the whole text at once.
+
 ## Configuration
 
 Optional, at `~/.config/git-foreach/config.toml` (or `$XDG_CONFIG_HOME/git-foreach/config.toml`).

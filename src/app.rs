@@ -3,7 +3,9 @@ use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
+use crossterm::event::{
+    Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
+};
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
@@ -20,6 +22,8 @@ use crate::repo::{self, Repo, RepoId, RepoStatus};
 use crate::runner::{Runner, RunnerEvent, Target};
 use crate::theme::Icons;
 use crate::tree::{NodeRef, TreeView};
+use tui_input::backend::crossterm::EventHandler;
+use tui_input::{Input, InputRequest};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Pane {
@@ -60,7 +64,13 @@ pub struct App {
     pub active_pane: Pane,
     /// Output-pane focus (None = show all repos). Independent of checkbox.
     pub focus: Option<RepoId>,
-    pub input: String,
+    pub input: Input,
+    /// Submitted commands, oldest first. Browsed with ↑/↓ while editing.
+    history: Vec<String>,
+    /// Position in `history` while browsing (None = editing the live draft).
+    history_pos: Option<usize>,
+    /// The live input stashed when history browsing starts, restored on the way back.
+    history_draft: String,
     pub outputs: HashMap<RepoId, RepoOutput>,
     pub running: bool,
     concurrency: usize,
@@ -120,7 +130,10 @@ impl App {
             tree,
             active_pane: Pane::Tree,
             focus: None,
-            input: String::new(),
+            input: Input::default(),
+            history: Vec::new(),
+            history_pos: None,
+            history_draft: String::new(),
             outputs: HashMap::new(),
             running: false,
             concurrency,
@@ -209,18 +222,60 @@ impl App {
         }
     }
 
-    /// Text editing while the input pane is active.
+    /// Text editing while the input pane is active. Enter / Esc / history keys are
+    /// handled here; everything else (cursor moves, word ops, kill/yank) is delegated
+    /// to tui-input's readline-style handler.
     fn handle_input_key(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
-                self.input.push(c);
-            }
-            KeyCode::Backspace => {
-                self.input.pop();
-            }
             KeyCode::Enter => self.apply(Action::Run),
             KeyCode::Esc => self.active_pane = Pane::Tree,
-            _ => {}
+            KeyCode::Up => self.history_prev(),
+            KeyCode::Down => self.history_next(),
+            _ => {
+                self.input.handle_event(&Event::Key(key));
+            }
+        }
+    }
+
+    /// Insert pasted text (bracketed paste) at the cursor. Control characters are
+    /// dropped so a multi-line paste collapses into a single command line.
+    pub fn on_paste(&mut self, data: String) {
+        if self.active_pane != Pane::Input {
+            return;
+        }
+        for c in data.chars().filter(|c| !c.is_control()) {
+            self.input.handle(InputRequest::InsertChar(c));
+        }
+    }
+
+    /// Step back to an older history entry (↑).
+    fn history_prev(&mut self) {
+        if self.history.is_empty() {
+            return;
+        }
+        let pos = match self.history_pos {
+            None => {
+                self.history_draft = self.input.value().to_string();
+                self.history.len() - 1
+            }
+            Some(0) => 0,
+            Some(i) => i - 1,
+        };
+        self.history_pos = Some(pos);
+        self.input = Input::new(self.history[pos].clone());
+    }
+
+    /// Step forward toward newer entries (↓); past the newest restores the draft.
+    fn history_next(&mut self) {
+        let Some(i) = self.history_pos else {
+            return;
+        };
+        if i + 1 < self.history.len() {
+            self.history_pos = Some(i + 1);
+            self.input = Input::new(self.history[i + 1].clone());
+        } else {
+            self.history_pos = None;
+            self.input = Input::new(std::mem::take(&mut self.history_draft));
         }
     }
 
@@ -366,7 +421,8 @@ impl App {
             Action::CopyOutput => self.copy_output(),
             Action::LoadPreset(i) => {
                 if let Some(preset) = self.presets.get(i) {
-                    self.input = preset.command.clone();
+                    self.input = Input::new(preset.command.clone());
+                    self.history_pos = None;
                     self.active_pane = Pane::Input;
                 }
             }
@@ -415,7 +471,7 @@ impl App {
         if self.running {
             return;
         }
-        let command = self.input.trim().to_string();
+        let command = self.input.value().trim().to_string();
         if command.is_empty() {
             return;
         }
@@ -429,6 +485,13 @@ impl App {
         if targets.is_empty() {
             return;
         }
+
+        // Record in history (skip consecutive duplicates) and leave browsing mode.
+        if self.history.last().map(String::as_str) != Some(command.as_str()) {
+            self.history.push(command.clone());
+        }
+        self.history_pos = None;
+        self.history_draft.clear();
 
         self.outputs.clear();
         for (id, _) in &targets {
@@ -930,16 +993,37 @@ impl App {
     fn render_input(&mut self, frame: &mut Frame, row: Rect) {
         let active = self.active_pane == Pane::Input;
         let prompt_color = if active { Color::Cyan } else { Color::DarkGray };
-        let line = Line::from(vec![
-            Span::styled(
-                format!("{} ", self.icons.prompt),
+        let prompt = format!("{} ", self.icons.prompt);
+        let prompt_w = Span::raw(&prompt).width() as u16;
+        frame.render_widget(
+            Paragraph::new(Line::from(Span::styled(
+                prompt,
                 Style::default()
                     .fg(prompt_color)
                     .add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(self.input.clone()),
-        ]);
-        frame.render_widget(Paragraph::new(line), row);
+            ))),
+            row,
+        );
+
+        // The value renders right of the prompt, horizontally scrolled so the
+        // cursor stays visible on long commands. The terminal cursor is placed
+        // only while the input pane is active.
+        let val_x = row.x + prompt_w;
+        let val_w = row.width.saturating_sub(prompt_w);
+        let scroll = self.input.visual_scroll(val_w as usize);
+        frame.render_widget(
+            Paragraph::new(self.input.value()).scroll((0, scroll as u16)),
+            Rect {
+                x: val_x,
+                y: row.y,
+                width: val_w,
+                height: 1,
+            },
+        );
+        if active {
+            let cx = val_x + (self.input.visual_cursor().saturating_sub(scroll)) as u16;
+            frame.set_cursor_position((cx, row.y));
+        }
 
         // Right edge: cancel (only while running) → counter / state to its left.
         let mut right_x = row.x + row.width;
@@ -1313,7 +1397,7 @@ mod tests {
             return;
         }
         app.repos[0].checked = true;
-        app.input = "echo wired-up".to_string();
+        app.input = Input::new("echo wired-up".to_string());
         app.apply(Action::Run);
         assert!(app.running);
 
@@ -1331,5 +1415,44 @@ mod tests {
         assert!(out.finished);
         assert_eq!(out.code, Some(0));
         assert!(out.lines.iter().any(|l| l.text == "wired-up"));
+    }
+
+    #[test]
+    fn history_browses_up_and_down_and_restores_draft() {
+        let mut app = App::from_config(Config::default(), None);
+        app.history = vec!["a".into(), "b".into(), "c".into()];
+        app.input = Input::new("draft".into());
+
+        app.history_prev(); // newest first
+        assert_eq!(app.input.value(), "c");
+        app.history_prev();
+        assert_eq!(app.input.value(), "b");
+        app.history_prev();
+        assert_eq!(app.input.value(), "a");
+        app.history_prev(); // clamps at the oldest
+        assert_eq!(app.input.value(), "a");
+
+        app.history_next();
+        assert_eq!(app.input.value(), "b");
+        app.history_next();
+        assert_eq!(app.input.value(), "c");
+        app.history_next(); // past the newest → the stashed draft
+        assert_eq!(app.input.value(), "draft");
+        app.history_next(); // no draft left, nothing to do
+        assert_eq!(app.input.value(), "draft");
+    }
+
+    #[test]
+    fn paste_inserts_at_cursor_and_drops_control_chars() {
+        let mut app = App::from_config(Config::default(), None);
+        app.active_pane = Pane::Input;
+        app.input = Input::new("git ".into());
+        app.on_paste("pull\n--rebase".into());
+        assert_eq!(app.input.value(), "git pull--rebase");
+
+        // Ignored unless the input pane is active.
+        app.active_pane = Pane::Tree;
+        app.on_paste(" ignored".into());
+        assert_eq!(app.input.value(), "git pull--rebase");
     }
 }
