@@ -2,9 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 
-use crossterm::event::{
-    KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
-};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
@@ -328,7 +326,11 @@ impl App {
             Action::CheckAll => self.set_all_checked(true),
             Action::UncheckAll => self.set_all_checked(false),
             Action::Focus(id) => {
-                self.focus = if self.focus == Some(id) { None } else { Some(id) };
+                self.focus = if self.focus == Some(id) {
+                    None
+                } else {
+                    Some(id)
+                };
                 self.follow = true;
             }
             Action::ClearFocus => self.focus = None,
@@ -444,7 +446,10 @@ impl App {
                 self.outputs.entry(repo).or_default().push_command(&command);
             }
             RunnerEvent::Line { repo, stream, text } => {
-                self.outputs.entry(repo).or_default().push_stream(stream, text);
+                self.outputs
+                    .entry(repo)
+                    .or_default()
+                    .push_stream(stream, text);
             }
             RunnerEvent::Finished { repo, code } => {
                 if let Some(out) = self.outputs.get_mut(&repo) {
@@ -506,8 +511,16 @@ impl App {
 
         // Top rule separating the body from the command region.
         let border = self.pane_border(Pane::Input);
-        frame.render_widget(Block::default().borders(Borders::TOP).border_style(border), cmd);
-        let line = |y: u16| Rect { x: cmd.x, y, width: cmd.width, height: 1 };
+        frame.render_widget(
+            Block::default().borders(Borders::TOP).border_style(border),
+            cmd,
+        );
+        let line = |y: u16| Rect {
+            x: cmd.x,
+            y,
+            width: cmd.width,
+            height: 1,
+        };
         if chips_h > 0 {
             self.render_chips(frame, line(cmd.y + 1));
         }
@@ -523,7 +536,14 @@ impl App {
             if x >= area.x + area.width {
                 break;
             }
-            x = self.chip(frame, area.y, x, label, Action::LoadPreset(i), Color::Indexed(238)) + 1;
+            x = self.chip(
+                frame,
+                area.y,
+                x,
+                label,
+                Action::LoadPreset(i),
+                Color::Indexed(238),
+            ) + 1;
         }
     }
 
@@ -539,7 +559,15 @@ impl App {
 
     /// Draw a powerline-pill button and register a hit. Returns the end x.
     /// In ascii mode (pills=false) it falls back to `[label]`.
-    fn chip(&mut self, frame: &mut Frame, y: u16, x: u16, label: &str, action: Action, bg: Color) -> u16 {
+    fn chip(
+        &mut self,
+        frame: &mut Frame,
+        y: u16,
+        x: u16,
+        label: &str,
+        action: Action,
+        bg: Color,
+    ) -> u16 {
         let (line, w) = if self.icons.pills {
             let mid = format!(" {label} ");
             let w = (Span::raw(self.icons.pl_left).width()
@@ -556,7 +584,12 @@ impl App {
             let w = Span::raw(&text).width() as u16;
             (Line::from(Span::styled(text, Style::default().fg(bg))), w)
         };
-        let rect = Rect { x, y, width: w, height: 1 };
+        let rect = Rect {
+            x,
+            y,
+            width: w,
+            height: 1,
+        };
         frame.render_widget(Paragraph::new(line), rect);
         self.hit.push((rect, Hit::Fire(action)));
         x + w
@@ -613,13 +646,22 @@ impl App {
     fn sel_prefix(&self, selected: bool, active: bool) -> Span<'static> {
         if selected {
             let color = if active { Color::Cyan } else { Color::DarkGray };
-            Span::styled(format!("{} ", self.icons.sel_bar), Style::default().fg(color))
+            Span::styled(
+                format!("{} ", self.icons.sel_bar),
+                Style::default().fg(color),
+            )
         } else {
             Span::raw("  ")
         }
     }
 
-    fn repo_line(&self, indent_level: u16, id: RepoId, selected: bool, active: bool) -> Line<'static> {
+    fn repo_line(
+        &self,
+        indent_level: u16,
+        id: RepoId,
+        selected: bool,
+        active: bool,
+    ) -> Line<'static> {
         let repo = &self.repos[id];
         let indent = "  ".repeat(indent_level as usize);
         let cb = if repo.checked {
@@ -627,7 +669,11 @@ impl App {
         } else {
             self.icons.check_off
         };
-        let cb_color = if repo.checked { Color::Cyan } else { Color::DarkGray };
+        let cb_color = if repo.checked {
+            Color::Cyan
+        } else {
+            Color::DarkGray
+        };
         let name_style = Style::default().fg(name_color(repo.status, repo.checked));
 
         let mut spans = vec![
@@ -822,7 +868,9 @@ impl App {
         let line = Line::from(vec![
             Span::styled(
                 format!("{} ", self.icons.prompt),
-                Style::default().fg(prompt_color).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(prompt_color)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::raw(self.input.clone()),
         ]);
@@ -833,7 +881,14 @@ impl App {
         if self.running {
             let w = self.chip_width(self.icons.cancel);
             right_x = right_x.saturating_sub(w);
-            self.chip(frame, row.y, right_x, self.icons.cancel, Action::Cancel, Color::Red);
+            self.chip(
+                frame,
+                row.y,
+                right_x,
+                self.icons.cancel,
+                Action::Cancel,
+                Color::Red,
+            );
             right_x = right_x.saturating_sub(1);
         }
         let checked = self.repos.iter().filter(|r| r.checked).count();
@@ -846,7 +901,12 @@ impl App {
         let sx = right_x.saturating_sub(sw);
         frame.render_widget(
             Paragraph::new(status).style(Style::default().fg(Color::DarkGray)),
-            Rect { x: sx, y: row.y, width: sw, height: 1 },
+            Rect {
+                x: sx,
+                y: row.y,
+                width: sw,
+                height: 1,
+            },
         );
     }
 
@@ -880,10 +940,16 @@ impl App {
             Span::styled(self.icons.pl_left, Style::default().fg(name_bg)),
             Span::styled(
                 format!(" {name} "),
-                Style::default().bg(name_bg).fg(Color::White).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .bg(name_bg)
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(self.icons.pl_sep, Style::default().fg(name_bg).bg(color)),
-            Span::styled(format!(" {label} "), Style::default().bg(color).fg(Color::Black)),
+            Span::styled(
+                format!(" {label} "),
+                Style::default().bg(color).fg(Color::Black),
+            ),
             Span::styled(self.icons.pl_right, Style::default().fg(color)),
         ])
     }
@@ -923,7 +989,9 @@ impl App {
             RepoStatus::Cancelled => {
                 Span::styled(i.status_cancel, Style::default().fg(Color::Yellow))
             }
-            RepoStatus::Skipped => Span::styled(i.status_skip, Style::default().fg(Color::DarkGray)),
+            RepoStatus::Skipped => {
+                Span::styled(i.status_skip, Style::default().fg(Color::DarkGray))
+            }
         }
     }
 }
@@ -975,7 +1043,8 @@ fn build_keymap(config: &Config) -> HashMap<String, String> {
     let mut map = config.keymap.clone();
     for (i, preset) in config.presets.iter().enumerate() {
         if let Some(key) = &preset.key {
-            map.entry(key.clone()).or_insert_with(|| format!("preset:{i}"));
+            map.entry(key.clone())
+                .or_insert_with(|| format!("preset:{i}"));
         }
     }
     map
@@ -1050,7 +1119,6 @@ fn toggle_expand(tree: &TreeView, node: NodeRef) -> Action {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1117,7 +1185,10 @@ mod tests {
         // click the checkbox column → check.
         assert!(!app.repos[id].checked);
         click(&mut app, text_x + indent * 2, rect.y);
-        assert!(app.repos[id].checked, "checkbox click should check the repo");
+        assert!(
+            app.repos[id].checked,
+            "checkbox click should check the repo"
+        );
 
         // click the name column (right of the checkbox) → focus.
         assert_eq!(app.focus, None);

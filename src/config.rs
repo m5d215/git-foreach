@@ -37,10 +37,7 @@ impl Config {
         };
         match toml::from_str::<Config>(&text) {
             Ok(cfg) => (cfg, None),
-            Err(e) => (
-                Config::default(),
-                Some(format!("config parse error: {e}")),
-            ),
+            Err(e) => (Config::default(), Some(format!("config parse error: {e}"))),
         }
     }
 }
