@@ -47,7 +47,12 @@ fn install_panic_hook() {
 
 const HELP: &str = "git-foreach — run a command across many local git repositories (TUI)
 
-Usage: git-foreach
+Usage: git-foreach [OPTIONS]
+
+Options:
+  -l, --list       List discovered repositories (as fqdn/user/repo) and exit
+  -V, --version    Print version and exit
+  -h, --help       Print this help and exit
 
 Scans ~/src and opens an interactive TUI: check repos, type a command, run it
 across all of them. See https://github.com/m5d215/git-foreach";
@@ -61,6 +66,12 @@ fn main() -> Result<()> {
             }
             "--help" | "-h" => {
                 println!("{HELP}");
+                return Ok(());
+            }
+            "--list" | "-l" => {
+                for repo in repo::discover(&repo::default_root()) {
+                    println!("{}", repo.rel_path());
+                }
                 return Ok(());
             }
             _ => {}
