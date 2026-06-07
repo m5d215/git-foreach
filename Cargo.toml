@@ -12,6 +12,7 @@ categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 anyhow = "1.0.102"
+arboard = { version = "3.6.1", default-features = false }
 crossterm = "0.29.0"
 dirs = "6.0.0"
 glob = "0.3.3"

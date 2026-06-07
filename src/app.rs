@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
+use std::time::{Duration, Instant};
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::Frame;
@@ -84,11 +85,20 @@ pub struct App {
     notice: Option<String>,
     /// Render counter for the spinner animation.
     tick: usize,
+    /// When the copy button was last fired and whether it succeeded; drives a
+    /// brief green/red color flash.
+    copy_flash: Option<(Instant, bool)>,
 }
 
 impl App {
     pub fn new() -> Self {
         let (config, notice) = Config::load();
+        Self::from_config(config, notice)
+    }
+
+    /// Build from an explicit config. `new()` loads the user config; tests pass
+    /// `Config::default()` so they don't depend on the machine's config file.
+    fn from_config(config: Config, notice: Option<String>) -> Self {
         let root = repo::default_root();
         let mut repos = repo::discover(&root);
         apply_default_checked(&mut repos, &config.default_checked);
@@ -129,6 +139,7 @@ impl App {
             keymap,
             notice,
             tick: 0,
+            copy_flash: None,
         }
     }
 
@@ -181,6 +192,7 @@ impl App {
             "scroll_down" => Some(Action::ScrollDown),
             "scroll_top" => Some(Action::ScrollTop),
             "scroll_bottom" => Some(Action::ScrollBottom),
+            "copy_output" => Some(Action::CopyOutput),
             "input" => Some(Action::FocusPane(Pane::Input)),
             "toggle_check" => cursor.map(Action::ToggleCheck),
             "expand" => cursor.map(Action::Expand),
@@ -351,6 +363,7 @@ impl App {
                 self.follow = false;
             }
             Action::ScrollBottom => self.follow = true,
+            Action::CopyOutput => self.copy_output(),
             Action::LoadPreset(i) => {
                 if let Some(preset) = self.presets.get(i) {
                     self.input = preset.command.clone();
@@ -785,9 +798,61 @@ impl App {
                 .end_symbol(None);
             frame.render_stateful_widget(scrollbar, inner, &mut sb_state);
         }
+
+        // Floating copy button, top-right corner. Drawn last so it sits above the
+        // content and the scrollbar; click is resolved before the output-pane fallback.
+        let label = self.icons.copy;
+        let bw = self.chip_width(label);
+        // Right margin so the pill doesn't hug the edge; extra cell when the
+        // scrollbar occupies the rightmost column.
+        let margin = if total > view_h { 3 } else { 2 };
+        let bx = inner.x + inner.width.saturating_sub(bw + margin);
+        let bg = match self.copy_flash {
+            Some((t, ok)) if t.elapsed() < Duration::from_millis(400) => {
+                if ok {
+                    Color::Green
+                } else {
+                    Color::Red
+                }
+            }
+            _ => Color::Indexed(238),
+        };
+        self.chip(frame, inner.y, bx, label, Action::CopyOutput, bg);
     }
 
     /// Ordered repo ids shown in the output pane (focus, or all repos with output).
+    /// Copy the currently visible output to the system clipboard. Mirrors the
+    /// output pane (WYSIWYG): focused repo only, or every repo with output.
+    /// Each box becomes a `# user/repo — status` header followed by its raw
+    /// lines, with a blank line between boxes.
+    fn copy_output(&mut self) {
+        let ids = self.output_ids();
+        if ids.is_empty() {
+            return; // nothing to copy (the button isn't shown when output is empty)
+        }
+
+        let mut text = String::new();
+        for id in &ids {
+            let (label, _) = self.status_pill(*id);
+            text.push_str(&format!(
+                "# {} — {}\n",
+                self.repos[*id].slug(),
+                label.trim()
+            ));
+            for ol in &self.outputs[id].lines {
+                text.push_str(&ol.text);
+                text.push('\n');
+            }
+            text.push('\n');
+        }
+
+        // Feedback is the button color flash (green ok / red fail), no status text.
+        let ok = arboard::Clipboard::new()
+            .and_then(|mut cb| cb.set_text(text))
+            .is_ok();
+        self.copy_flash = Some((Instant::now(), ok));
+    }
+
     fn output_ids(&self) -> Vec<RepoId> {
         match self.focus {
             Some(id) => vec![id],
@@ -894,7 +959,7 @@ impl App {
         let checked = self.repos.iter().filter(|r| r.checked).count();
         let state = if self.running { "running" } else { "idle" };
         let status = match &self.notice {
-            Some(msg) => format!("⚠ {msg}   {checked} {} · {state}", self.icons.check_on),
+            Some(msg) => format!("{msg}   {checked} {} · {state}", self.icons.check_on),
             None => format!("{checked} {} · {state}", self.icons.check_on),
         };
         let sw = Span::raw(&status).width() as u16;
@@ -1160,7 +1225,9 @@ mod tests {
     /// Whether tree-row checkbox / name clicks work via hit-test.
     #[test]
     fn mouse_click_toggles_checkbox_and_focus() {
-        let mut app = App::new();
+        // Default config (no default_checked) so the test doesn't depend on the
+        // machine's ~/.config/git-foreach/config.toml leaving repos checked.
+        let mut app = App::from_config(Config::default(), None);
         if app.repos.is_empty() {
             return;
         }
