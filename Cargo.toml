@@ -14,7 +14,7 @@ categories = ["command-line-utilities", "development-tools"]
 anyhow = "1.0.102"
 arboard = { version = "3.6.1", default-features = false }
 crossterm = "0.29.0"
-dirs = "6.0.0"
+dirs = "7.0.0"
 glob = "0.3.3"
 nix = { version = "0.31.3", features = ["signal", "process"] }
 ratatui = "0.30.1"
